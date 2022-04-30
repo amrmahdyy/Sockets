@@ -72,7 +72,8 @@ data (in case of POST)
 Close the connection
 end while
 note: your client program should use the reliable stream protocol
-and the internet domain protocols
+and the internet domain protocols.
+
 3) HTTP 1.1
 You are required to add simple HTTP/1.1 support to your web server,
 consisting of persistent connections and pipelining of client requests
