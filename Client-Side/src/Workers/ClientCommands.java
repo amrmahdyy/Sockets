@@ -12,13 +12,14 @@ public class ClientCommands {
 
     public ClientCommands(String clientFilePath){
        this.clientFilePath=clientFilePath;
+       clientRequests=new ArrayList<>();
        readCommands();
     }
     /*
     * this is the function that is responsible for reading commands from the file and create a new clientRequest object
     * for every command and add it to clientRequests arrayList
     * */
-    public void readCommands(){
+    private void readCommands(){
         try{
             File clientCommandsFile=new File(clientFilePath);
             Scanner reader=new Scanner(clientCommandsFile);
@@ -32,13 +33,17 @@ public class ClientCommands {
                 switch (clientCommandsSeperated.length){
                     case 3:
                       clientRequest=new ClientRequest(clientCommandsSeperated[0],clientCommandsSeperated[1],clientCommandsSeperated[2]);
+                        clientRequests.add(clientRequest);
+                        break;
                     case 4:
                         clientRequest=new ClientRequest(clientCommandsSeperated[0],clientCommandsSeperated[1],clientCommandsSeperated[2],clientCommandsSeperated[3]);
+                        clientRequests.add(clientRequest);
+                        break;
                     default:
                         throw new IOException("Invalid command length, command must have a range of 3 to 4 elements");
                 }
             }
-            clientRequests.add(clientRequest);
+            reader.close();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             System.out.println("Can't read client commands file");

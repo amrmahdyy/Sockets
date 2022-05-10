@@ -1,8 +1,5 @@
 package Workers;
 
-import java.security.InvalidParameterException;
-import java.util.Locale;
-
 public class ClientRequest {
     private enum Methods{
         GET,
@@ -13,14 +10,22 @@ public class ClientRequest {
     private String hostName;
     private String portNumber="8080";
 
+    @Override
+    public boolean equals(Object obj){
+        if(!this.getClass().equals(obj.getClass()))
+            return false;
+        ClientRequest otherClientRequest=(ClientRequest) obj;
+        return this.methodType.equals(otherClientRequest.methodType) && this.hostName.equals(otherClientRequest.hostName)
+                && this.portNumber.equals(otherClientRequest.portNumber) && this.hostName.equals(otherClientRequest.hostName);
+    }
 
     public ClientRequest(String methodType,String fileName,String hostName){
-        this.methodType=methodType;
+        setMethodType(methodType.toUpperCase());
         this.fileName=fileName;
         this.hostName=hostName;
     }
     public ClientRequest(String methodType,String fileName,String hostName,String portNumber){
-        setMethodType(methodType);
+        setMethodType(methodType.toUpperCase());
         this.fileName=fileName;
         this.hostName=hostName;
         this.portNumber=portNumber;
@@ -28,14 +33,16 @@ public class ClientRequest {
     public String getMethodType() {
         return methodType;
     }
-    private void setMethodType(String methodType) {
+    private void setMethodType(String methodType) throws IllegalArgumentException {
         switch (methodType){
             case "GET":
                 this.methodType = Methods.GET.name();
+                break;
             case "POST":
                 this.methodType=Methods.POST.name();
+                break;
             default:
-                throw new InvalidParameterException("This method type is not supported");
+                throw new IllegalArgumentException("This method type is not supported");
         }
     }
 
