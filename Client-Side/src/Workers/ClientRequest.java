@@ -1,6 +1,7 @@
 package Workers;
 
 import java.security.InvalidParameterException;
+import java.util.Locale;
 
 public class ClientRequest {
     private enum Methods{
@@ -12,11 +13,22 @@ public class ClientRequest {
     private String hostName;
     private String portNumber="8080";
 
+
+    public ClientRequest(String methodType,String fileName,String hostName){
+        this.methodType=methodType;
+        this.fileName=fileName;
+        this.hostName=hostName;
+    }
+    public ClientRequest(String methodType,String fileName,String hostName,String portNumber){
+        setMethodType(methodType);
+        this.fileName=fileName;
+        this.hostName=hostName;
+        this.portNumber=portNumber;
+    }
     public String getMethodType() {
         return methodType;
     }
-
-    public void setMethodType(String methodType) {
+    private void setMethodType(String methodType) {
         switch (methodType){
             case "GET":
                 this.methodType = Methods.GET.name();
@@ -31,23 +43,21 @@ public class ClientRequest {
         return fileName;
     }
 
-    public void setFileName(String fileName) {
-        this.fileName = fileName;
-    }
+
 
     public String getHostName() {
         return hostName;
     }
 
-    public void setHostName(String hostName) {
-        this.hostName = hostName;
-    }
 
     public String getPortNumber() {
         return portNumber;
     }
 
-    public void setPortNumber(String portNumber) {
-        this.portNumber = portNumber;
+    /*
+    * This function return the correct client request that will be sent
+    * */
+    public String getClientRequest(){
+        return this.methodType+" "+this.fileName+" "+this.hostName+" "+this.portNumber;
     }
 }
