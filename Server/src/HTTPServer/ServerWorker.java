@@ -2,11 +2,14 @@ package HTTPServer;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.HashMap;
 
 public class ServerWorker extends Thread {
     private Socket socket;
     private String httpMethod, requestedPath;
     private String notFoundPath = "/404.html";
+    private HashMap<String, String> httpHeaders = new HashMap<String, String>();
+    private StringBuilder httpBody = new StringBuilder();
 
     ServerWorker(Socket socket) {
         this.socket = socket;
@@ -18,8 +21,11 @@ public class ServerWorker extends Thread {
 
         if (httpMethod.equals("GET")) {
             Boolean resourceExists = Extensions.resourcesExists(requestedPath);
-            System.out.println(resourceExists);
             GET(resourceExists);
+        }
+
+        if (httpMethod.equals("POST")) {
+            POST();
         }
     }
 
@@ -62,6 +68,38 @@ public class ServerWorker extends Thread {
         }
     }
 
+    private void POST() {
+        String contentType = httpHeaders.get("Content-Type");
+        String targetExtension = Extensions.getExtensionType(contentType);
+        String targetURI = requestedPath + targetExtension;
+
+        StringBuilder responseBuilder = new StringBuilder();
+
+        try {
+
+            File createdFile = new File(SocketServer.resourcesDirectory + targetURI);
+
+            if (createdFile.createNewFile()) {
+                Extensions.write(targetURI, httpBody.toString());
+                responseBuilder.append("HTTP/1.0 200 OK\r\n");
+            } else
+                responseBuilder.append("HTTP/1.0 404 Not Found\r\n");
+
+            responseBuilder.append("Date: " + Extensions.getCurrentDate() + "\n");
+            responseBuilder.append("Server: macOS\n");
+            responseBuilder.append("Connection: Closed\n");
+            responseBuilder.append("\r\n");
+
+            OutputStream outStream = socket.getOutputStream();
+            outStream.write(responseBuilder.toString().getBytes());
+            outStream.flush();
+            outStream.close();
+
+        } catch (IOException exception) {
+            System.out.println("An error occurred in the upload process.");
+            exception.printStackTrace();
+        }
+    }
 
     @Override
     public void run() {
@@ -70,12 +108,35 @@ public class ServerWorker extends Thread {
         try {
             InputStreamReader inStream = new InputStreamReader(socket.getInputStream());
             BufferedReader bufferedReader = new BufferedReader(inStream);
+            StringBuilder requestBuilder = new StringBuilder();
+
             String lineReader = bufferedReader.readLine();
             String[] lineComponents = lineReader.split(" ");
+
+            Boolean expectsData = false;
 
             httpMethod = lineComponents[0];
             requestedPath = lineComponents[1];
 
+            while (lineReader != null) {
+                if (lineReader.contains(":")) {
+                    String[] httpHeader = lineReader.split(":");
+                    httpHeaders.put(httpHeader[0], httpHeader[1].trim());
+                }
+
+                if (lineReader.isBlank()) {
+                    expectsData = true;
+                }
+
+                if (expectsData) {
+                    httpBody.append(lineReader);
+                }
+
+                requestBuilder.append(lineReader + "\r\n");
+                lineReader = bufferedReader.readLine();
+            }
+
+            System.out.println(requestBuilder.toString());
             completeRequest();
 
         } catch (Exception exception) {
