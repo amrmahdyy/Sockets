@@ -4,7 +4,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class SocketServer {
-    public static String resourcesDirectory = "/Users/test/Desktop/Term 8/Computer networks/Final-Project/Sockets/Server/src/HTTPServer/Resources";
+    public static String resourcesDirectory = "/Users/Youssef/Desktop/Opensource/Sockets/Server/src/HTTPServer/Resources";
     public static Integer ACTIVE_WORKERS = 0;
     public static Integer PORT = 8080;
 

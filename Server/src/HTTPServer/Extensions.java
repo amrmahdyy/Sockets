@@ -2,13 +2,13 @@ package HTTPServer;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Date;
 
 public class Extensions {
     public static boolean resourcesExists(String path) {
         File resource = new File(SocketServer.resourcesDirectory + path);
-        System.out.println(resource.toPath().toString());
         return resource.exists();
     }
 
@@ -42,6 +42,35 @@ public class Extensions {
         if (path.endsWith(".ico"))
             return "image/x-icon";
         return "text/plain";
+    }
+
+    public static String getExtensionType(String contentType) {
+        if (contentType.equals("text/html"))
+            return ".html";
+        if (contentType.equals("application/json"))
+            return ".json";
+        if (contentType.equals("image/jpeg"))
+            return ".jpeg";
+        if (contentType.equals("image/jpg"))
+            return ".jpg";
+        if (contentType.equals("text/xml"))
+            return ".xml";
+        if (contentType.equals("video/mp4"))
+            return ".mp4";
+        if (contentType.equals("audio/mpeg"))
+            return ".mpeg";
+        if (contentType.equals("image/png"))
+            return ".png";
+        if (contentType.equals("image/x-icon"))
+            return ".ico";
+
+        return ".txt";
+    }
+
+    public static void write(String path, String dataWritten) throws IOException {
+        FileWriter myWriter = new FileWriter(SocketServer.resourcesDirectory + path);
+        myWriter.write(dataWritten);
+        myWriter.close();
     }
 
     public static FileInputStream getFileInputStream(String path) throws IOException {
