@@ -118,25 +118,27 @@ public class ServerWorker extends Thread {
             httpMethod = lineComponents[0];
             requestedPath = lineComponents[1];
 
-            while (lineReader != null) {
-                if (lineReader.contains(":")) {
-                    String[] httpHeader = lineReader.split(":");
-                    httpHeaders.put(httpHeader[0], httpHeader[1].trim());
-                }
+            if (httpMethod == "POST") {
 
-                if (lineReader.isBlank()) {
-                    expectsData = true;
-                }
+                while (lineReader != null) {
+                    if (lineReader.contains(":")) {
+                        String[] httpHeader = lineReader.split(":");
+                        httpHeaders.put(httpHeader[0], httpHeader[1].trim());
+                    }
 
-                if (expectsData) {
-                    httpBody.append(lineReader);
-                }
+                    if (lineReader.isBlank()) {
+                        expectsData = true;
+                    }
 
-                requestBuilder.append(lineReader + "\r\n");
-                lineReader = bufferedReader.readLine();
+                    if (expectsData) {
+                        httpBody.append(lineReader);
+                    }
+
+                    requestBuilder.append(lineReader + "\r\n");
+                    lineReader = bufferedReader.readLine();
+                }
             }
 
-            System.out.println(requestBuilder.toString());
             completeRequest();
 
         } catch (Exception exception) {
