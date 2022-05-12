@@ -73,8 +73,15 @@ public class Extensions {
         myWriter.close();
     }
 
-    public static FileInputStream getFileInputStream(String path) throws IOException {
-        FileInputStream fileInputStream = new FileInputStream(SocketServer.resourcesDirectory + path);
-        return fileInputStream;
+    public static FileInputStream getFileInputStream(String path)  {
+        try{
+            FileInputStream fileInputStream = new FileInputStream(SocketServer.resourcesDirectory + path);
+            return fileInputStream;
+        }
+        catch (IOException ioException){
+            System.out.println("Failed to find file");
+            ioException.printStackTrace();
+        }
+        return null;
     }
 }
