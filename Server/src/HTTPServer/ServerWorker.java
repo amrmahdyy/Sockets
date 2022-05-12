@@ -5,7 +5,10 @@ import java.net.Socket;
 import java.util.HashMap;
 
 public class ServerWorker extends Thread {
+    byte[] dataBytes;
+    byte[] resourceBytes;
     private Socket socket;
+    String clientRequest="";
     private String httpMethod, requestedPath;
     private String notFoundPath = "/404.html";
     private HashMap<String, String> httpHeaders = new HashMap<String, String>();
@@ -15,24 +18,14 @@ public class ServerWorker extends Thread {
         this.socket = socket;
     }
 
-    private void completeRequest() {
-        if (requestedPath.equals("/"))
-            requestedPath = "/index.html";
-
-        if (httpMethod.equals("GET")) {
-            Boolean resourceExists = Extensions.resourcesExists(requestedPath);
-            GET(resourceExists);
-        }
-
-        if (httpMethod.equals("POST")) {
-            POST();
-        }
-    }
 
     private void GET(Boolean resourceExists) {
         StringBuilder responseBuilder = new StringBuilder();
         FileInputStream fileInputStream;
         String targetURI;
+
+        if (requestedPath.equals("/"))
+            requestedPath = "/index.html";
 
         if (resourceExists) {
             targetURI = requestedPath;
@@ -56,93 +49,95 @@ public class ServerWorker extends Thread {
             responseBuilder.append("Content-Type: " + contentType + "\n");
             responseBuilder.append("Connection: Closed\n");
             responseBuilder.append("\r\n");
+            OutputStream outputStream = (socket.getOutputStream());
+            System.out.println(socket.isConnected());
+            responseBuilder.append(fileInputStream);
 
-            OutputStream outStream = socket.getOutputStream();
-            outStream.write(responseBuilder.toString().getBytes());
-            outStream.write(fileInputStream.readAllBytes());
-            outStream.flush();
-            outStream.close();
 
+            outputStream.write(responseBuilder.toString().getBytes());
+            outputStream.flush();
+
+            fileInputStream.close();
         } catch (Exception exception) {
             exception.printStackTrace();
         }
     }
 
-    private void POST() {
-        String contentType = httpHeaders.get("Content-Type");
-        String targetExtension = Extensions.getExtensionType(contentType);
-        String targetURI = requestedPath + targetExtension;
 
-        StringBuilder responseBuilder = new StringBuilder();
+//    This function is used by POST function where it saves the resource
 
-        try {
-
-            File createdFile = new File(SocketServer.resourcesDirectory + targetURI);
-
-            if (createdFile.createNewFile()) {
-                Extensions.write(targetURI, httpBody.toString());
-                responseBuilder.append("HTTP/1.0 200 OK\r\n");
-            } else
-                responseBuilder.append("HTTP/1.0 404 Not Found\r\n");
-
-            responseBuilder.append("Date: " + Extensions.getCurrentDate() + "\n");
-            responseBuilder.append("Server: macOS\n");
-            responseBuilder.append("Connection: Closed\n");
-            responseBuilder.append("\r\n");
-
-            OutputStream outStream = socket.getOutputStream();
-            outStream.write(responseBuilder.toString().getBytes());
-            outStream.flush();
-            outStream.close();
-
-        } catch (IOException exception) {
-            System.out.println("An error occurred in the upload process.");
-            exception.printStackTrace();
+    void saveResource(byte[]resourceBytes){
+        try{
+            File file=new File(SocketServer.resourcesDirectory+requestedPath);
+            FileOutputStream fileOutputStream=new FileOutputStream(file);
+            fileOutputStream.write(resourceBytes);
         }
+        catch(IOException ioException){
+            System.out.println("Can't save resource on Server");
+            ioException.printStackTrace();
+        }
+
+    }
+
+
+//    This function is responsible for copying the resource bytes from the main byte array by passing the start of resourceStartIndex
+    void processPOST(int resourceStartIndex){
+        int padding=3;
+        int dataStartIndex=resourceStartIndex+padding;
+
+         resourceBytes=new byte[dataBytes.length-dataStartIndex];
+        for(int i=0;i<resourceBytes.length;i++){
+            resourceBytes[i]=dataBytes[i+dataStartIndex];
+        }
+    }
+
+    void POST(){
+        saveResource(resourceBytes);
+    }
+
+    void processSocketStream(){
+        try{
+            InputStream is=socket.getInputStream();
+            dataBytes=is.readAllBytes();
+
+            String dataInString=new String(dataBytes);
+            System.out.println(dataInString);
+//            Search for the end of the header
+            int resourceStartIndex=dataInString.indexOf("\n\r");
+
+//            get Client request from the first line
+             clientRequest=dataInString.split("\\R")[0];
+//             Get the requested path from client
+            requestedPath=clientRequest.split(" ")[1];
+            String clientMethodType=clientRequest.split(" ")[0];
+
+            if(clientMethodType.equals("GET")){
+                Boolean isResourceExists=Extensions.resourcesExists(requestedPath);
+                GET(isResourceExists);
+            }
+
+            else if(clientMethodType.equals("POST")) {
+                processPOST(resourceStartIndex);
+                POST();
+            }
+            else throw new RuntimeException("Unsupported request method type");
+        }
+        catch(IOException ioException){
+            System.out.println("Error in reading socket stream");
+
+        }
+
     }
 
     @Override
     public void run() {
         super.run();
-
-        try {
-            InputStreamReader inStream = new InputStreamReader(socket.getInputStream());
-            BufferedReader bufferedReader = new BufferedReader(inStream);
-            StringBuilder requestBuilder = new StringBuilder();
-
-            String lineReader = bufferedReader.readLine();
-            String[] lineComponents = lineReader.split(" ");
-
-            Boolean expectsData = false;
-
-            httpMethod = lineComponents[0];
-            requestedPath = lineComponents[1];
-
-            if (httpMethod == "POST") {
-
-                while (lineReader != null) {
-                    if (lineReader.contains(":")) {
-                        String[] httpHeader = lineReader.split(":");
-                        httpHeaders.put(httpHeader[0], httpHeader[1].trim());
-                    }
-
-                    if (lineReader.isBlank()) {
-                        expectsData = true;
-                    }
-
-                    if (expectsData) {
-                        httpBody.append(lineReader);
-                    }
-
-                    requestBuilder.append(lineReader + "\r\n");
-                    lineReader = bufferedReader.readLine();
-                }
-            }
-
-            completeRequest();
-
-        } catch (Exception exception) {
-            exception.printStackTrace();
+        try{
+            processSocketStream();
+        }
+        catch(Exception exception){
+           exception.printStackTrace();
+        }
         }
     }
-}
+
