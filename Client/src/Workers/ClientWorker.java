@@ -1,9 +1,7 @@
 package Workers;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
+import java.net.Socket;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -20,22 +18,100 @@ public class ClientWorker {
     byte[]headerBytes;
     byte[]resourceBytes;
     String clientRequest;
+    ClientRequest clientRequestObj;
+    OutputStream out;
+    Socket socket;
+    String resourcePath="/Users/test/Desktop/Term 8/Sockets/Client/src/Resources/";
 
-    public ClientWorker(byte[] dataBytes,String clientRequest){
-        this.dataBytes=dataBytes;
-        this.clientRequest=clientRequest;
+    public ClientWorker(Socket socket,ClientRequest clientRequest) throws IOException {
+        this.socket=socket;
+        out=socket.getOutputStream();
 
-        bytesReader();
-        parseHeader();
+        this.clientRequest=clientRequest.getClientRequest();
+        this.clientRequestObj=clientRequest;
 
-        saveResource();
+        System.out.println(this.clientRequest);
+
+
+        if(clientRequestObj.getMethodType().equals("GET")){
+            out.write(this.clientRequest.getBytes());
+            out.flush();
+            InputStream inputStream=socket.getInputStream();
+            this.dataBytes=inputStream.readAllBytes();
+            bytesHeaderReader();
+            parseHeader();
+            saveResource();
+        }
+//        If method type is POST, send file on the outputStream out
+        else if(clientRequestObj.getMethodType().equals("POST"))
+           POST();
+        out.flush();
+        out.close();
     }
 
+    void POST() throws IOException {
+        String targetFile=this.clientRequest.split("/")[1].split(" ")[0];
+//        // System.out.println(targetFile);
+        String extension=targetFile.split("[.]")[1];
+        StringBuilder requestBuilder=new StringBuilder();
+        requestBuilder.append("Content-Type: text/"+extension+"\n"+"\r\n");
+////        System.out.println(requestBuilder.toString().length());
+        FileInputStream fileInputStream=sendFile(targetFile);
+//
+//        System.out.println(fileInputStream.readAllBytes().length);
+       // requestBuilder.append(fileInputStream.readAllBytes());
+       // System.out.println("");
+       // System.out.println(requestBuilder.toString().length());
+        out.write((this.clientRequest+"\n").getBytes());
+        out.flush();
+        out.write(requestBuilder.toString().getBytes());
+        out.write(fileInputStream.readAllBytes());
+        out.flush();
+//        out.write(requestBuilder.toString().getBytes());
+//        out.flush();
+
+
+        //out.write(fileInputStream.readAllBytes());
+        //out.write(fileInputStream.readAllBytes());
+//        out.write("\r\n".getBytes());
+
+    }
+//    for debugging
+    public String getFileContent( FileInputStream fis ) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        Reader r = new InputStreamReader(fis, "UTF-8");  //or whatever encoding
+        int ch = r.read();
+        while(ch >= 0) {
+            sb.append(ch);
+            ch = r.read();
+        }
+        return sb.toString();
+    }
+
+    /*
+     * This method takes clientRequest string as a parameter and sends the request to the server
+     * */
+    void sendRequest(String clientRequest) throws IOException {
+        out.write((clientRequest+"\r\n").getBytes());
+    }
+
+//    This function uploads the file on the outputStream
+    FileInputStream sendFile(String targetFile) {
+        try{
+            FileInputStream fileInputStream=new FileInputStream(resourcePath+targetFile);
+          return fileInputStream;
+        }
+        catch(IOException ioException){
+            System.out.println("Can't send the file to server");
+        }
+        return null;
+    }
 /*
 * This function separate between header bytes and resource bytes
 * */
-     void bytesReader(){
+     void bytesHeaderReader(){
          String dataInString=new String(dataBytes);
+         System.out.println(dataInString);
 //         Search for the separator between header and resource data
          int resourceStartIndex=dataInString.indexOf("\n\r");
 
@@ -47,6 +123,7 @@ public class ClientWorker {
 
          int padding=3;
          int dataStartIndex=resourceStartIndex+padding;
+
          resourceBytes=new byte[dataBytes.length-dataStartIndex];
          for(int i=0;i<resourceBytes.length;i++){
              resourceBytes[i]=dataBytes[i+dataStartIndex];
@@ -74,7 +151,7 @@ public class ClientWorker {
             String fileName=getFileName();
             if(!headerMap.get("statusMessage").equals("OK"))
                 fileName="404";
-            File file=new File("/Users/test/Desktop/Term 8/Computer networks/Final-Project/Sockets/Client/src/Resources/"+fileName+"."+extension);
+            File file=new File(resourcePath+fileName+"."+extension);
             FileOutputStream fos=new FileOutputStream(file);
             fos.write(resourceBytes);
         }
@@ -120,8 +197,10 @@ public class ClientWorker {
         String server=splittedHeader[2].split(": ")[1];
         String lastModified=splittedHeader[3].split(": ")[1];
         String contentLength=splittedHeader[4].split(": ")[1];
-        String contentType=splittedHeader[5].split(": ")[1];;
-        String connection=splittedHeader[6].split(": ")[1];;
+        String contentType=splittedHeader[5].split(": ")[1];
+        String connection=splittedHeader[6].split(": ")[1];
+
+
 
         headerMap.put("httpVersion",httpVersion);
         headerMap.put("statusCode",statusCode);
